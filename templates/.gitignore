@@ -1,3 +1,6 @@
-env/Lib/site-packages/
+env/
 *.dll
 *.lib
+*.zip
+*.tar
+*.exe
