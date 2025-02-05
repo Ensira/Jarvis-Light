@@ -4,6 +4,8 @@ import subprocess
 import datetime
 import urllib.parse
 import whisper
+import tempfile
+import time
 
 import openai
 import os
@@ -33,20 +35,30 @@ def recognize_speech():
 
         recognizer.pause_threshold = 1.0
         recognizer.operation_timeout = 5
-
         audio = recognizer.listen(source)
     try:
-        with open("temp_audio.wav", "wb") as f:
+        temp_audio_path = os.path.join(os.getcwd(), "temp_audio.wav")
+        with open(temp_audio_path, "wb") as f:
             f.write(audio.get_wav_data())
-            text = recognizer.recognize_google(audio, language="de-DE")
+        time.sleep(1)
+        if not os.path.exists(temp_audio_path):
+            raise FileNotFoundError("DIe Audiodatei wurde nicht korrekt gespeichert.")
+        model = whisper.load_model("medium")
+        result = model.transcribe(temp_audio_path, fp16=False)
+        text = result["text"].strip()
         print(f"Du hast gesagt: {text}")
+        os.remove(temp_audio_path)
         return text
+    except FileNotFoundError as e:
+        print(f"Fehler: {e}")
     except sr.UnknownValueError:
         print("Jarvis konnte nicht verstehen.")
         return None
     except sr.RequestError:
         print("Jarvis konnte dich nicht verstehen.")
         return None
+    except Exception as e:
+        print(f"Ein unerwarteter Fehler ist aufgetreten {e}")
 
 def execute_command(command):
     if "öffne google" in command:
@@ -79,7 +91,7 @@ def execute_command(command):
     elif "stopp" in command.lower():
         print("Jarvis wird beendet.")
         return False
-    return True
+    return None
 
 def wait_for_hotword():
     recognizer = sr.Recognizer()
