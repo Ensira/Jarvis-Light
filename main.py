@@ -6,6 +6,7 @@ import urllib.parse
 import whisper
 import tempfile
 import time
+import io
 
 import openai
 import os
@@ -37,6 +38,7 @@ def recognize_speech():
         recognizer.operation_timeout = 5
         audio = recognizer.listen(source)
     try:
+        audio_data = io.BytesIO(audio.get_wav_data())
         temp_audio_path = os.path.join(os.getcwd(), "temp_audio.wav")
         with open(temp_audio_path, "wb") as f:
             f.write(audio.get_wav_data())
@@ -107,7 +109,16 @@ def wait_for_hotword():
             print("Warte auf Aktivierungswort...")
             try:
                 audio = recognizer.listen(source)
-                text = recognizer.recognize_google(audio, language="de-DE")
+                audio_data = io.BytesIO(audio.get_wav_data())
+                temp_audio_path = os.path.join(os.getcwd(), "temp_audio.wav")
+                with open(temp_audio_path, "wb") as f:
+                    f.write(audio.get_wav_data())
+                time.sleep(1)
+                if not os.path.exists(temp_audio_path):
+                    raise FileNotFoundError("DIe Audiodatei wurde nicht korrekt gespeichert.")
+                model = whisper.load_model("medium")
+                result = model.transcribe(temp_audio_path, fp16=False)
+                text = result["text"].strip().lower()
                 print(f"Erkannt: {text}")
 
                 if "hey jarvis" in text.lower():
